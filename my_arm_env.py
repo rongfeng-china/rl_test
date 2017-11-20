@@ -126,7 +126,7 @@ class Viewer(pyglet.window.Window):
 
         self.background = pyglet.graphics.Batch()
         self.frame_num = 0
-        img = pyglet.image.load("/home/rong/Desktop/human_pics/00.jpg")
+        img = pyglet.image.load("./human_pics/00.jpg")
 
         #arm1_box, arm2_box, point_box = [0]*8, [0]*8, [0]*8
         arm1_box, arm2_box = [0]*8, [0]*8
@@ -163,7 +163,7 @@ class Viewer(pyglet.window.Window):
                      self.point_info[0] - point_l, self.point_info[1] + point_l)
         self.point.vertices = point_box'''
 
-        img = pyglet.image.load("/home/rong/Desktop/human_pics/%02d.jpg" %(self.frame_num%75))
+        img = pyglet.image.load("./human_pics/%02d.jpg" %(self.frame_num%75))
         self.target = pyglet.sprite.Sprite(img, 50, 190, batch=self.background)
         self.target.x = self.point_info[0]
         self.target.y = self.point_info[1]
