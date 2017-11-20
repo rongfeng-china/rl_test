@@ -11,28 +11,29 @@ n_model = 0
 env = ArmEnv(mode=MODE[n_model])
 env.set_fps(30)
 
-env.reset()
+
 env.render()
-env.step([0,0])
-env.render()
-im = env.getImage()
-cv2.imwrite('img.jpg',im)
 
-for t in range(5):
-    env.reset()
+for i in range(20):
+    env.step2([1.57,0.])
     env.render()
-    env.step([0,0])
-    env.render()
+    for j in range(100000000):
+        continue
 
-    cv2.imwrite('loop'+str(t)+'.jpg',im)
+
+
+
+    #cv2.imwrite('loop'+str(t)+'.jpg',im)
     
-    v1 = random.randint(1, 10)
-    v2 = random.randint(1, 10)
+    #v1 = random.randint(1, 10)
+    #v2 = random.randint(1, 10)
     
 
-    env.step([v1,v2])
-    env.render()
-    im = env.getImage()
+    #env.step2([100,100])
+    #env.render()
+
+    #env.step2([100,50])
+    #im = env.getImage()
     '''
     imgray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 200,255,cv2.THRESH_BINARY_INV)

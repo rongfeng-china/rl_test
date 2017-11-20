@@ -1,7 +1,7 @@
 import numpy as np
 import pyglet
 import cv2
-
+from math import *
 pyglet.clock.set_fps_limit(10000)
 
 
@@ -33,7 +33,7 @@ class ArmEnv(object):
     def step(self, action):
         # action = (node1 angular v, node2 angular v)
         action = np.clip(action, *self.action_bound)
-        print (action)
+        #print (action)
         self.arm_info[:, 1] += action * self.dt
         self.arm_info[:, 1] %= np.pi * 2
 
@@ -47,6 +47,52 @@ class ArmEnv(object):
         s, arm2_distance = self._get_state()
         r = self._r_func(arm2_distance)
 
+        return s, r, self.get_point
+
+    def step2(self, action):
+        
+        self.arm_info[:, 1] +=  action #(np.array(action) * self.dt).tolist()
+        self.arm_info[:, 1] %= np.pi * 2
+
+        arm1rad = self.arm_info[0, 1]
+        arm2rad = self.arm_info[1, 1]
+        arm1dx_dy = np.array([self.arm_info[0, 0] * np.cos(arm1rad), self.arm_info[0, 0] * np.sin(arm1rad)])
+        arm2dx_dy = np.array([self.arm_info[1, 0] * np.cos(arm2rad), self.arm_info[1, 0] * np.sin(arm2rad)])
+        self.arm_info[0, 2:4] = self.center_coord + arm1dx_dy  # (x1, y1)
+        self.arm_info[1, 2:4] = self.arm_info[0, 2:4] + arm2dx_dy  # (x2, y2)
+
+        s, arm2_distance = self._get_state()
+        r = self._r_func(arm2_distance)
+
+        return s, r, self.get_point
+
+    def step_not(self, act):
+        arm_end = self.arm_info[:, 2:4]
+        print(arm_end)
+        x,y = act[0]+arm_end[1][0],act[1]+arm_end[1][1]
+
+        dq2 = acos((x**2+y**2-self.arm1l**2-self.arm2l**2)/1./(2*self.arm1l*self.arm2l))
+        dq1 = atan(1.*y/x)-atan(1.*self.arm2l*sin(dq2)/(self.arm1l+cos(dq2)*self.arm2l))
+        print(dq2,dq1)
+        action = [dq1,dq1+dq2]
+
+        #action = np.clip(action, *self.action_bound)
+        
+        self.arm_info[:, 1] = action 
+        self.arm_info[:, 1] %= np.pi * 2
+
+        arm1rad = self.arm_info[0, 1]
+        arm2rad = self.arm_info[1, 1]
+        arm1dx_dy = np.array([self.arm_info[0, 0] * np.cos(arm1rad), self.arm_info[0, 0] * np.sin(arm1rad)])
+        arm2dx_dy = np.array([self.arm_info[1, 0] * np.cos(arm2rad), self.arm_info[1, 0] * np.sin(arm2rad)])
+        self.arm_info[0, 2:4] = self.center_coord + arm1dx_dy  # (x1, y1)
+        self.arm_info[1, 2:4] = self.arm_info[0, 2:4] + arm2dx_dy  # (x2, y2)
+
+        print('aa'),
+        print (self.arm_info[:,2:4])
+
+        s, arm2_distance = self._get_state()
+        r = self._r_func(arm2_distance)
         return s, r, self.get_point
 
     def getImage(self):

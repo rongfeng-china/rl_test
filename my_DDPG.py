@@ -14,7 +14,7 @@ np.random.seed(1)
 tf.set_random_seed(1)
 
 MAX_EPISODES = 60000
-MAX_EP_STEPS = 10000 #200
+MAX_EP_STEPS = 200 
 LR_A = 1e-4  # learning rate for actor
 LR_C = 1e-4  # learning rate for critic
 GAMMA = 0.9  # reward discount
@@ -228,7 +228,7 @@ def train():
     for ep in range(MAX_EPISODES):
         pos_s = env.reset()
         env.render()
-        env.step([0,0])
+        env.step2([0.,0.])
         env.render()
         x_t = env.getBinaryImage()
         cv2.imshow('hi',x_t)
@@ -243,8 +243,9 @@ def train():
 
             # Added exploration noise
             a = actor.choose_action(np.reshape(s_t[:,:,0], (80, 80, 1)))
-            a = np.clip(np.random.normal(a, var), *ACTION_BOUND)    # add randomness to action selection for exploration
-            pos_s_, r, done = env.step(a)
+            #a = np.clip(np.random.normal(a, var), *ACTION_BOUND)
+            a = np.random.normal(a, var)   # add randomness to action selection for exploration
+            pos_s_, r, done = env.step2(a)
 
             env.render()
             x_t1 = env.getBinaryImage()
@@ -289,7 +290,7 @@ def eval():
     env.set_fps(30)
     pos_s = env.reset()
     env.render()
-    env.step([0,0])
+    env.step2([0.,0.])
     env.render()
     x_t = env.getBinaryImage()
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
@@ -298,7 +299,7 @@ def eval():
         if RENDER:
             env.render()
         a = actor.choose_action(np.reshape(s_t[:,:,0], (80, 80, 1)))
-        pos_s_, r, done = env.step(a)
+        pos_s_, r, done = env.step2(a)
         env.render()
         x_t1 = env.getBinaryImage()
         x_t1 = np.reshape(x_t1, (80, 80, 1))
