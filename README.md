@@ -1,10 +1,10 @@
 # requirement
 tensorflow,pyglet,opencv,numpy
 
-#environment: 
+# environment: 
 2_link robot arm
 
-#task: 
+# task: 
 reach to target
 
 DDPG.py: position --> action, position, action --> q value
