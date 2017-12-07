@@ -29,6 +29,7 @@ class ArmEnv(object):
         self.point_info = np.array([250, 303])
         self.point_info_init = self.point_info.copy()
         self.center_coord = np.array(self.viewer_xy)/2
+        self.frame_num = 0
 
     def step(self, action):
         # action = (node1 angular v, node2 angular v)
@@ -51,6 +52,7 @@ class ArmEnv(object):
     def reset(self):
         self.get_point = False
         self.grab_counter = 0
+        self.frame_num += 1
 
         if self.mode == 'hard':
             pxy = np.clip(np.random.rand(2) * self.viewer_xy[0], 100, 300)
@@ -69,8 +71,8 @@ class ArmEnv(object):
 
     def render(self):
         if self.viewer is None:
-            self.viewer = Viewer(*self.viewer_xy, self.arm_info, self.point_info, self.point_l, self.mouse_in)
-        self.viewer.render()
+            self.viewer = Viewer(*self.viewer_xy, self.arm_info, self.point_info, self.point_l, self.mouse_in, self.frame_num)
+        self.viewer.render(self.frame_num)
 
     def sample_action(self):
         return np.random.uniform(*self.action_bound, size=self.action_dim)
@@ -111,38 +113,47 @@ class Viewer(pyglet.window.Window):
     fps_display = pyglet.clock.ClockDisplay()
     bar_thc = 5
 
-    def __init__(self, width, height, arm_info, point_info, point_l, mouse_in):
+    def __init__(self, width, height, arm_info, point_info, point_l, mouse_in, frame_num):
         super(Viewer, self).__init__(width, height, resizable=False, caption='Arm', vsync=False)  # vsync=False to not use the monitor FPS
         self.set_location(x=80, y=10)
         pyglet.gl.glClearColor(*self.color['background'])
 
         self.arm_info = arm_info
-        self.point_info = point_info
+        self.point_info = point_info  ## rong:delete it?
         self.mouse_in = mouse_in
         self.point_l = point_l
 
         self.center_coord = np.array((min(width, height)/2, ) * 2)
         self.batch = pyglet.graphics.Batch()
 
+        self.dict = np.load("human_dict.npy")
+        #self.point_info[0] += int(self.dict[()][0][0])
+        #self.point_info[1] += int(self.dict[()][0][1]) ## rong
         self.background = pyglet.graphics.Batch()
-        self.frame_num = 0
+        self.frame_num = frame_num
+        self.counter = 0
         img = pyglet.image.load("./human_pics/00.jpg")
+
+        point_box = (self.point_info[0] - point_l, self.point_info[1] - point_l,
+                     self.point_info[0] + point_l, self.point_info[1] - point_l,
+                     self.point_info[0] + point_l, self.point_info[1] + point_l,
+                     self.point_info[0] - point_l, self.point_info[1] + point_l)
 
         #arm1_box, arm2_box, point_box = [0]*8, [0]*8, [0]*8
         arm1_box, arm2_box = [0]*8, [0]*8
         c1, c2, c3 = (249, 86, 86)*4, (86, 109, 249)*4, (249, 39, 65)*4
-        #self.point = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', point_box), ('c3B', c2))
+        self.point = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', point_box), ('c3B', c2))
         self.arm1 = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', arm1_box), ('c3B', c1))
         self.arm2 = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', arm2_box), ('c3B', c1))
 
-        self.target = pyglet.sprite.Sprite(img, 50, 190,batch=self.background)
-        self.target.x = 40
-        self.target.y = 0
+        self.target = pyglet.sprite.Sprite(img, 0, 0, batch=self.background)
+        self.target.x = self.point_info[0]-int(175*.8/2)
+        self.target.y = self.point_info[1]-int(218*.8/2)
         self.target.scale = .8
 
-    def render(self):
+    def render(self, frame_num):
+        self.frame_num = frame_num
         pyglet.clock.tick()
-        self.frame_num = self.frame_num + 1
         self._update_arm()
         self.switch_to()
         self.dispatch_events()
@@ -157,17 +168,29 @@ class Viewer(pyglet.window.Window):
 
     def _update_arm(self):
         point_l = self.point_l
-        '''point_box = (self.point_info[0] - point_l, self.point_info[1] - point_l,
+        self.point_info[0] = self.point_info[0]- (175./2-int(self.dict[()][(self.frame_num%75)][0]))*.8
+        self.point_info[0] = self.point_info[1] + (218./2-int(self.dict[()][(self.frame_num%75)][1]))*.8
+
+        img = pyglet.image.load("./human_pics/%02d.jpg" %(self.frame_num%75))
+        self.target = pyglet.sprite.Sprite(img, 0, 0, batch=self.background)
+        self.target.x = self.point_info[0]-int(175*.8/2) + (175./2-int(self.dict[()][(self.frame_num%75)][0]))*.8  # 175, 218 is the size of loaded image
+        self.target.y = self.point_info[1]-int(218*.8/2) - (218./2-int(self.dict[()][(self.frame_num%75)][1]))*.8
+        self.target.scale = .8
+
+
+        '''point_box = (xx - point_l, yy - point_l,
+                     xx + point_l, yy - point_l,
+                     xx + point_l, yy + point_l,
+                     xx - point_l, yy + point_l)'''
+       
+
+        point_box = (self.point_info[0] - point_l, self.point_info[1] - point_l,
                      self.point_info[0] + point_l, self.point_info[1] - point_l,
                      self.point_info[0] + point_l, self.point_info[1] + point_l,
                      self.point_info[0] - point_l, self.point_info[1] + point_l)
-        self.point.vertices = point_box'''
+        self.point.vertices = point_box
 
-        img = pyglet.image.load("./human_pics/%02d.jpg" %(self.frame_num%75))
-        self.target = pyglet.sprite.Sprite(img, 50, 190, batch=self.background)
-        self.target.x = self.point_info[0]
-        self.target.y = self.point_info[1]
-        self.target.scale = .8
+
 
         arm1_coord = (*self.center_coord, *(self.arm_info[0, 2:4]))  # (x0, y0, x1, y1)
         arm2_coord = (*(self.arm_info[0, 2:4]), *(self.arm_info[1, 2:4]))  # (x1, y1, x2, y2)

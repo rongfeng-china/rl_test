@@ -1,7 +1,7 @@
 import numpy as np
 import pyglet
-import cv2
-from math import *
+
+
 pyglet.clock.set_fps_limit(10000)
 
 
@@ -33,7 +33,6 @@ class ArmEnv(object):
     def step(self, action):
         # action = (node1 angular v, node2 angular v)
         action = np.clip(action, *self.action_bound)
-        #print (action)
         self.arm_info[:, 1] += action * self.dt
         self.arm_info[:, 1] %= np.pi * 2
 
@@ -49,84 +48,12 @@ class ArmEnv(object):
 
         return s, r, self.get_point
 
-    def step2(self, action):
-        
-        self.arm_info[:, 1] +=  action #(np.array(action) * self.dt).tolist()
-        self.arm_info[:, 1] %= np.pi * 2
-
-        arm1rad = self.arm_info[0, 1]
-        arm2rad = self.arm_info[1, 1]
-        arm1dx_dy = np.array([self.arm_info[0, 0] * np.cos(arm1rad), self.arm_info[0, 0] * np.sin(arm1rad)])
-        arm2dx_dy = np.array([self.arm_info[1, 0] * np.cos(arm2rad), self.arm_info[1, 0] * np.sin(arm2rad)])
-        self.arm_info[0, 2:4] = self.center_coord + arm1dx_dy  # (x1, y1)
-        self.arm_info[1, 2:4] = self.arm_info[0, 2:4] + arm2dx_dy  # (x2, y2)
-
-        s, arm2_distance = self._get_state()
-        r = self._r_func(arm2_distance)
-
-        return s, r, self.get_point
-
-    def step_not(self, act):
-        arm_end = self.arm_info[:, 2:4]
-        print(arm_end)
-        x,y = act[0]+arm_end[1][0],act[1]+arm_end[1][1]
-
-        dq2 = acos((x**2+y**2-self.arm1l**2-self.arm2l**2)/1./(2*self.arm1l*self.arm2l))
-        dq1 = atan(1.*y/x)-atan(1.*self.arm2l*sin(dq2)/(self.arm1l+cos(dq2)*self.arm2l))
-        print(dq2,dq1)
-        action = [dq1,dq1+dq2]
-
-        #action = np.clip(action, *self.action_bound)
-        
-        self.arm_info[:, 1] = action 
-        self.arm_info[:, 1] %= np.pi * 2
-
-        arm1rad = self.arm_info[0, 1]
-        arm2rad = self.arm_info[1, 1]
-        arm1dx_dy = np.array([self.arm_info[0, 0] * np.cos(arm1rad), self.arm_info[0, 0] * np.sin(arm1rad)])
-        arm2dx_dy = np.array([self.arm_info[1, 0] * np.cos(arm2rad), self.arm_info[1, 0] * np.sin(arm2rad)])
-        self.arm_info[0, 2:4] = self.center_coord + arm1dx_dy  # (x1, y1)
-        self.arm_info[1, 2:4] = self.arm_info[0, 2:4] + arm2dx_dy  # (x2, y2)
-
-        print('aa'),
-        print (self.arm_info[:,2:4])
-
-        s, arm2_distance = self._get_state()
-        r = self._r_func(arm2_distance)
-        return s, r, self.get_point
-
-    def getImage(self):
-        rawImage = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
-        data = rawImage.get_data('RGB', rawImage.pitch)
-        imageBytes = rawImage.get_data(rawImage.format, rawImage.pitch)  # returns a bytes array
-        imageRGBA = np.ndarray(shape=(rawImage.height, rawImage.width, len(rawImage.format)), buffer=imageBytes, dtype=np.uint8, strides=(rawImage.pitch, len(rawImage.format), 1))
-        imageR, imageG, imageB, _ = cv2.split(imageRGBA)
-        imageBGR = cv2.merge((imageB, imageG, imageR))
-        imageBGR = cv2.flip(imageBGR, 0)
-        #cv2.imshow('hihi',imageBGR)
-        #cv2.waitKey(100)
-        return imageBGR
-
-    def getBinaryImage(self):
-        rawImage = pyglet.image.get_buffer_manager().get_color_buffer().get_image_data()
-        data = rawImage.get_data('RGB', rawImage.pitch)
-        imageBytes = rawImage.get_data(rawImage.format, rawImage.pitch)  # returns a bytes array
-        imageRGBA = np.ndarray(shape=(rawImage.height, rawImage.width, len(rawImage.format)), buffer=imageBytes, dtype=np.uint8, strides=(rawImage.pitch, len(rawImage.format), 1))
-        imageR, imageG, imageB, _ = cv2.split(imageRGBA)
-        imageBGR = cv2.merge((imageB, imageG, imageR))
-        im = cv2.flip(imageBGR, 0)
-        imgray = cv2.cvtColor(cv2.resize(im, (80, 80)), cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 200,255,cv2.THRESH_BINARY_INV)
-        return thresh
-
-
     def reset(self):
         self.get_point = False
         self.grab_counter = 0
 
         if self.mode == 'hard':
             pxy = np.clip(np.random.rand(2) * self.viewer_xy[0], 100, 300)
-            pxy = [150,200]
             self.point_info[:] = pxy
         else:
             arm1rad, arm2rad = np.random.rand(2) * np.pi * 2
@@ -138,7 +65,6 @@ class ArmEnv(object):
             self.arm_info[1, 2:4] = self.arm_info[0, 2:4] + arm2dx_dy  # (x2, y2)
 
             self.point_info[:] = self.point_info_init
-
         return self._get_state()[0]
 
     def render(self):
@@ -149,7 +75,7 @@ class ArmEnv(object):
     def sample_action(self):
         return np.random.uniform(*self.action_bound, size=self.action_dim)
 
-    def set_fps(self, fps=30):
+    def set_fps(self, fps=20):
         pyglet.clock.set_fps_limit(fps)
 
     def _get_state(self):
@@ -198,14 +124,25 @@ class Viewer(pyglet.window.Window):
         self.center_coord = np.array((min(width, height)/2, ) * 2)
         self.batch = pyglet.graphics.Batch()
 
-        arm1_box, arm2_box, point_box = [0]*8, [0]*8, [0]*8
+        self.background = pyglet.graphics.Batch()
+        self.frame_num = 0
+        img = pyglet.image.load("./human_pics/00.jpg")
+
+        #arm1_box, arm2_box, point_box = [0]*8, [0]*8, [0]*8
+        arm1_box, arm2_box = [0]*8, [0]*8
         c1, c2, c3 = (249, 86, 86)*4, (86, 109, 249)*4, (249, 39, 65)*4
-        self.point = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', point_box), ('c3B', c2))
+        #self.point = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', point_box), ('c3B', c2))
         self.arm1 = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', arm1_box), ('c3B', c1))
         self.arm2 = self.batch.add(4, pyglet.gl.GL_QUADS, None, ('v2f', arm2_box), ('c3B', c1))
 
+        self.target = pyglet.sprite.Sprite(img, 50, 190,batch=self.background)
+        self.target.x = 40
+        self.target.y = 0
+        self.target.scale = .8
+
     def render(self):
         pyglet.clock.tick()
+        self.frame_num = self.frame_num + 1
         self._update_arm()
         self.switch_to()
         self.dispatch_events()
@@ -214,16 +151,23 @@ class Viewer(pyglet.window.Window):
 
     def on_draw(self):
         self.clear()
+        self.background.draw()
         self.batch.draw()
-        # self.fps_display.draw()
+        #self.fps_display.draw()
 
     def _update_arm(self):
         point_l = self.point_l
-        point_box = (self.point_info[0] - point_l, self.point_info[1] - point_l,
+        '''point_box = (self.point_info[0] - point_l, self.point_info[1] - point_l,
                      self.point_info[0] + point_l, self.point_info[1] - point_l,
                      self.point_info[0] + point_l, self.point_info[1] + point_l,
                      self.point_info[0] - point_l, self.point_info[1] + point_l)
-        self.point.vertices = point_box
+        self.point.vertices = point_box'''
+
+        img = pyglet.image.load("./human_pics/%02d.jpg" %(self.frame_num%75))
+        self.target = pyglet.sprite.Sprite(img, 50, 190, batch=self.background)
+        self.target.x = self.point_info[0]
+        self.target.y = self.point_info[1]
+        self.target.scale = .8
 
         arm1_coord = (*self.center_coord, *(self.arm_info[0, 2:4]))  # (x0, y0, x1, y1)
         arm2_coord = (*(self.arm_info[0, 2:4]), *(self.arm_info[1, 2:4]))  # (x1, y1, x2, y2)

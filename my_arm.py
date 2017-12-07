@@ -13,12 +13,13 @@ env.set_fps(30)
 
 
 env.render()
-
-for i in range(20):
-    env.step2([1.57,0.])
+env.step([3,3])
+env.render()
+while True:
+    env.step([0,0])
     env.render()
-    for j in range(100000000):
-        continue
+    #for j in range(100000000):
+    #    continue
 
 
 

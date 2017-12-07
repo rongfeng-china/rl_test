@@ -13,7 +13,7 @@ import cv2
 np.random.seed(1)
 tf.set_random_seed(1)
 
-MAX_EPISODES = 60000
+MAX_EPISODES = 10000
 MAX_EP_STEPS = 200 
 LR_A = 1e-4  # learning rate for actor
 LR_C = 1e-4  # learning rate for critic
@@ -21,7 +21,7 @@ GAMMA = 0.9  # reward discount
 REPLACE_ITER_A = 1100
 REPLACE_ITER_C = 1000
 MEMORY_CAPACITY = 5000
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 VAR_MIN = 0.1
 RENDER = True
 LOAD = False
@@ -81,13 +81,13 @@ class Actor(object):
 
     def _build_net(self, s, scope, trainable):
         with tf.variable_scope(scope):
-            W_conv1 = self.weight_variable([8, 8, 1, 32])
-            b_conv1 = self.bias_variable([32])
-            W_conv2 = self.weight_variable([4, 4, 32, 64])
-            b_conv2 = self.bias_variable([64])
-            W_conv3 = self.weight_variable([3, 3, 64, 64])
-            b_conv3 = self.bias_variable([64])
-            W_fc1 = self.weight_variable([1600, 512])
+            W_conv1 = self.weight_variable([8, 8, 1, 300])
+            b_conv1 = self.bias_variable([300])
+            W_conv2 = self.weight_variable([4, 4, 300, 300])
+            b_conv2 = self.bias_variable([300])
+            W_conv3 = self.weight_variable([3, 3, 300, 300])
+            b_conv3 = self.bias_variable([300])
+            W_fc1 = self.weight_variable([7500, 512])
             b_fc1 = self.bias_variable([512])
             W_fc2 = self.weight_variable([512, ACTIONS])
             b_fc2 = self.bias_variable([ACTIONS])
@@ -99,7 +99,7 @@ class Actor(object):
             h_conv3 = tf.nn.relu(self.conv2d(h_conv2, W_conv3, 1) + b_conv3)
             #h_pool3 = max_pool_2x2(h_conv3)
             #h_pool3_flat = tf.reshape(h_pool3, [-1, 256])
-            h_conv3_flat = tf.reshape(h_conv3, [-1, 1600])
+            h_conv3_flat = tf.reshape(h_conv3, [-1, 7500])
             h_fc1 = tf.nn.relu(tf.matmul(h_conv3_flat, W_fc1) + b_fc1)
 
             with tf.variable_scope('a'):
@@ -228,11 +228,11 @@ def train():
     for ep in range(MAX_EPISODES):
         pos_s = env.reset()
         env.render()
-        env.step2([0.,0.])
+        env.step([0.,0.])
         env.render()
         x_t = env.getBinaryImage()
-        cv2.imshow('hi',x_t)
-        cv2.waitKey(100)
+        #cv2.imshow('show',x_t)
+        #cv2.waitKey(100)
         s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
         ep_reward = 0
 
@@ -245,10 +245,12 @@ def train():
             a = actor.choose_action(np.reshape(s_t[:,:,0], (80, 80, 1)))
             #a = np.clip(np.random.normal(a, var), *ACTION_BOUND)
             a = np.random.normal(a, var)   # add randomness to action selection for exploration
-            pos_s_, r, done = env.step2(a)
+            pos_s_, r, done = env.step(a)
 
             env.render()
             x_t1 = env.getBinaryImage()
+            #cv2.imshow('show',x_t1)
+            #cv2.waitKey(100)
             x_t1 = np.reshape(x_t1, (80, 80, 1))
             s_t1 = np.append(x_t1, s_t[:, :, :3], axis=2)
 
@@ -290,7 +292,7 @@ def eval():
     env.set_fps(30)
     pos_s = env.reset()
     env.render()
-    env.step2([0.,0.])
+    env.step([0.,0.])
     env.render()
     x_t = env.getBinaryImage()
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
@@ -299,7 +301,7 @@ def eval():
         if RENDER:
             env.render()
         a = actor.choose_action(np.reshape(s_t[:,:,0], (80, 80, 1)))
-        pos_s_, r, done = env.step2(a)
+        pos_s_, r, done = env.step(a)
         env.render()
         x_t1 = env.getBinaryImage()
         x_t1 = np.reshape(x_t1, (80, 80, 1))
